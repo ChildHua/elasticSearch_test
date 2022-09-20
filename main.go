@@ -24,7 +24,6 @@ func init() {
 		panic(err)
 	}
 
-	// testindex = "my-index-000001"
 	indexName = "employees3"
 }
 
@@ -190,7 +189,8 @@ func Search(w http.ResponseWriter, req *http.Request) {
 	}
 	d, err := json.Marshal(reqMap)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 	fmt.Println(string(d))
 	esreq := esapi.SearchRequest{
@@ -201,7 +201,8 @@ func Search(w http.ResponseWriter, req *http.Request) {
 	}
 	r, err2 := esreq.Do(context.Background(), es)
 	if err2 != nil {
-		panic(err2)
+		fmt.Println(err)
+		return
 	}
 	fmt.Println(r)
 }
