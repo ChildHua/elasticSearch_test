@@ -7,8 +7,9 @@ docker run -d -e MYSQL_ALLOW_EMPTY_PASSWORD=true -v $(pwd)/test_db:/test_db -p 3
 ```
 
 运行 elastic 容器
+```
 docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:7.17.6
-
+```
 ### 导入数据
 导入 mysql & 验证
 ```
