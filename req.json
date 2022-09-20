@@ -1,0 +1,28 @@
+{
+    "aggs": {
+        "salaries": {
+            "aggs": {
+                "avg_salary": {
+                    "avg": {
+                        "field": "salaries.salary"
+                    }
+                }
+            },
+            "nested": {
+                "path": "salaries"
+            }
+        }
+    },
+    "highlight": {
+        "fields": {
+            "first_name": {
+                "force_source": "true"
+            }
+        }
+    },
+    "query": {
+        "bool": {
+            "must": []
+        }
+    }
+}
