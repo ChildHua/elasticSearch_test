@@ -110,6 +110,12 @@ func salariesSearch(f, t string) interface{} {
 	return res
 }
 
+// "group_by_comments_date": {
+// 	"date_histogram": {
+// 	  "field": "comments.date",
+// 	  "interval": "month",
+// 	  "format": "yyyy-MM"
+// 	},
 func salariesAggs() interface{} {
 	res := map[string]interface{}{
 		"aggs": map[string]interface{}{
@@ -118,7 +124,21 @@ func salariesAggs() interface{} {
 					"path": "salaries",
 				},
 				"aggs": map[string]interface{}{
-					"avg_salary": map[string]interface{}{
+					"by_month": map[string]interface{}{
+						"date_histogram": map[string]string{
+							"field":    "salaries.from_date",
+							"interval": "month",
+							"format":   "yyyy-MM",
+						},
+						"aggs": map[string]interface{}{
+							"avg_salary": map[string]interface{}{
+								"avg": map[string]string{
+									"field": "salaries.salary",
+								},
+							},
+						},
+					},
+					"avg_salaries": map[string]interface{}{
 						"avg": map[string]string{
 							"field": "salaries.salary",
 						},
