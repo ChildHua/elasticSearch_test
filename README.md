@@ -19,8 +19,11 @@ docker exec <containerid> bash -c 'cd test_db && mysql -t < test_employees_md5.s
 ```
 
 ~~ 导入 mysql 数据到 elastic ~~
+
 ~~ 运行 pkg/initElasticData/main.go ~~
+
 ~~ go run pkg/initElasticData/main.go ~~
+
 
 ### 接入 kafka
 运行 kafka 服务（依赖 zookeeper)
