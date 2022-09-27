@@ -3,6 +3,7 @@ module testElastic
 go 1.16
 
 require (
+	github.com/Shopify/sarama v1.36.0
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/elastic/go-elasticsearch/v7 v7.17.1 // indirect
 	github.com/elastic/go-elasticsearch/v8 v8.4.0 // indirect

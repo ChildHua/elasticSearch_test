@@ -8,6 +8,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"testElastic/pkg/kafkaStream/common"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -26,6 +27,10 @@ var (
 	indexName   string
 	deptInfo    map[string]string
 	deptMngInfo map[string]interface{}
+)
+
+const (
+	kafkaIndex = "employees_kafka"
 )
 
 func init() {
@@ -49,8 +54,10 @@ func init() {
 }
 
 func main() {
-	CreateIndex()
-	run()
+	// CreateIndex()
+	// run()
+	kafkaStream()
+	select {}
 }
 
 func run() {
@@ -164,6 +171,35 @@ func CreateIndex() {
 	fmt.Println(res)
 }
 
+func CreateIndexForKafka() {
+	// Re-create the index
+	if _, err = es.Indices.Delete([]string{kafkaIndex}); err != nil {
+		log.Fatalf("Cannot delete index: %s", err)
+	}
+	res, err := es.Indices.Create(kafkaIndex, es.Indices.Create.WithBody(strings.NewReader(`{
+		"mappings": {
+			"properties": {
+				"salaries": {
+					"type": "nested"
+				},
+				"title":{
+					"type": "nested"
+				},
+				"department":{
+					"type":"nested"
+				},
+				"dept_mng":{
+					"type":"nested"
+				}
+			}
+		}
+	  }`)))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(res)
+}
+
 func CreateBatchDoc(bi esutil.BulkIndexer, docid int, source map[string]interface{}) {
 	data, err := json.Marshal(source)
 	if err != nil {
@@ -241,6 +277,57 @@ func generateDeptMngWithNo() {
 	}
 }
 
-// update dept_emp set emp_no = '10001' where emp_no='110022';
-// current emp_no 402836
-// current emp_no 402837
+func kafkaStream() {
+	bi, err := esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
+		Index:         kafkaIndex,      // The default index name
+		Client:        es,              // The Elasticsearch client
+		NumWorkers:    2,               // The number of worker goroutines
+		FlushBytes:    int(5e+6),       // The flush threshold in bytes
+		FlushInterval: 5 * time.Second, // The periodic flush interval
+	})
+	if err != nil {
+		log.Fatalf("Error creating the indexer: %s", err)
+		return
+	}
+
+	go empConsm(bi)
+	go salaryConsm(bi)
+}
+
+func empConsm(bi esutil.BulkIndexer) {
+	consm := common.NewConsumer(common.Group, []string{common.Topic_emp}, &common.EventHandler{
+		Claim: func(data common.KafkaMsg) error {
+			i, _ := strconv.Atoi(data.ID)
+			fmt.Println("emp_msg id:", i)
+			CreateBatchDoc(bi, i, data.Detail)
+			return nil
+		},
+	})
+	defer consm.Stop()
+	consm.Consume() // 异步消费
+}
+
+func salaryConsm(bi esutil.BulkIndexer) {
+	empsalary_avg := make(map[float64][]int)
+	consm := common.NewConsumer(common.Group, []string{common.Topic_salary}, &common.EventHandler{
+		Claim: func(data common.KafkaMsg) error {
+			i, _ := strconv.Atoi(data.ID)
+			emp_id := data.Detail["emp_no"].(float64)
+			salary := data.Detail["salary"].(float64)
+			if v, ok := empsalary_avg[emp_id]; ok {
+				count := v[0]
+				avg := v[1]
+				v[1] = (avg*count + int(salary)) / (count + 1)
+				v[0] = count + 1
+			} else {
+				s := []int{1, int(salary)}
+				empsalary_avg[emp_id] = s
+			}
+			fmt.Println("employee avg :", empsalary_avg)
+			CreateBatchDoc(bi, i, data.Detail)
+			return nil
+		},
+	})
+	defer consm.Stop()
+	consm.Consume() // 异步消费
+}
